@@ -165,6 +165,11 @@ func (c *XDSConfig) loadClusters(staticResources *bootstrap.Bootstrap_StaticReso
 
 // GetEndpoint return an endpoint address by random
 func (c *ClusterConfig) GetEndpoint() (string, *time.Duration) {
+	if err := c.UpdateFromMeshServer(); err != nil {
+		log.DefaultLogger.Errorf("Connection to mesh server error: %v", err)
+		return "", nil
+	}
+
 	if c.LbPolicy != xdsapi.Cluster_RANDOM || len(c.Address) < 1 {
 		// never happen
 		return "", nil

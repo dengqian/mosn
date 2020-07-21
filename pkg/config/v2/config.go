@@ -41,6 +41,13 @@ type MOSNConfig struct {
 	Debug               PProfConfig     `json:"pprof,omitempty"`
 	Pid                 string          `json:"pid,omitempty"`    // pid file
 	Plugin              PluginConfig    `json:"plugin,omitempty"` // plugin config
+
+	MeshServerConf MeshServerConfig `json:"mesh_server,omitempty"` // mesh server addr
+}
+
+type MeshServerConfig struct {
+	Addr string `json:"host"`
+	Uri  string `json:"uri"`
 }
 
 // PProfConfig is used to start a pprof server for debug
