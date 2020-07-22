@@ -46,8 +46,9 @@ type MOSNConfig struct {
 }
 
 type MeshServerConfig struct {
-	Addr string `json:"host"`
-	Uri  string `json:"uri"`
+	Addr    string `json:"host"`
+	Uri     string `json:"uri"`
+	Cluster string `json:"cluster"`
 }
 
 // PProfConfig is used to start a pprof server for debug

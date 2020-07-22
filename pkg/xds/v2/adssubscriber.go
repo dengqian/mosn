@@ -29,7 +29,7 @@ import (
 // send goroutine periodic request lds and cds
 // receive goroutine handle response for both client request and server push
 func (adsClient *ADSClient) Start() {
-	SetMeshServerConfig(adsClient.MosnConfig.MeshServerConf.Addr, adsClient.MosnConfig.MeshServerConf.Uri)
+	SetMeshServerConfig(&adsClient.MosnConfig.MeshServerConf)
 	adsClient.StreamClient = adsClient.AdsConfig.GetStreamClient()
 	utils.GoWithRecover(func() {
 		adsClient.sendThread()

@@ -23,12 +23,14 @@ package v2
 
 import (
 	"encoding/json"
-	"mosn.io/mosn/pkg/types"
 	"net"
 	"net/http"
 	"os"
 	"strings"
 	"testing"
+
+	v2 "mosn.io/mosn/pkg/config/v2"
+	"mosn.io/mosn/pkg/types"
 )
 
 var resp = `
@@ -79,13 +81,32 @@ func Test_ConnectMeshServer(t *testing.T) {
 	}
 	go s.Serve(ln)
 
-	os.Setenv(ClusterEnv, "test")
-	SetMeshServerConfig("127.0.0.1:13477", "/apis/v1/mesh/pilot/")
+	meshServerConfig := v2.MeshServerConfig{
+		Addr:    "127.0.0.1:13477",
+		Uri:     "/apis/v1/mesh/pilot/",
+		Cluster: "test",
+	}
+	SetMeshServerConfig(&meshServerConfig)
 	types.GetGlobalXdsInfo().ServiceNode = "a.svc.cluster.local||multitenancy.tenant=cdn~multitenancy.workspace=test~multitency.cluster=test"
 	c := ClusterConfig{}
 	if err = c.UpdateFromMeshServer(); err != nil {
 		t.Errorf("update from mesh server failed")
 	}
+
+
+	meshServerConfig = v2.MeshServerConfig{
+		Addr:    "127.0.0.1:13477",
+		Uri:     "/apis/v1/mesh/pilot/",
+	}
+	os.Setenv(ClusterEnv, "test")
+
+	SetMeshServerConfig(&meshServerConfig)
+	c = ClusterConfig{}
+	types.GetGlobalXdsInfo().ServiceNode = "a.svc.cluster.local||multitenancy.tenant=cdn~multitenancy.workspace=test~multitency.cluster=test"
+	if err = c.UpdateFromMeshServer(); err != nil {
+		t.Errorf("update from mesh server failed %v", err)
+	}
+
 
 	if strings.Contains(types.GetGlobalXdsInfo().ServiceNode, "shenzhen") != true {
 		t.Errorf("update service node failed")

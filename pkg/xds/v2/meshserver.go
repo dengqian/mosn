@@ -30,6 +30,7 @@ import (
 	"os"
 	"strings"
 
+	v2 "mosn.io/mosn/pkg/config/v2"
 	"mosn.io/mosn/pkg/log"
 	"mosn.io/mosn/pkg/types"
 )
@@ -71,21 +72,27 @@ var (
 	MeshServerAddr string
 	MeshServerApi  = "/apis/v1/mesh/pilot/"
 	ClusterEnv = "RD_APP_CLUSTER"
+	ClusterName string
 )
 
-func SetMeshServerConfig(addr string, uri string) {
-	MeshServerAddr = addr
-	MeshServerApi = uri
+func SetMeshServerConfig(c *v2.MeshServerConfig) {
+	MeshServerAddr = c.Addr
+	MeshServerApi = c.Uri
+	ClusterName = c.Cluster
 }
 
 // connect to mesh server and get pilot addressed
 func (c *ClusterConfig) UpdateFromMeshServer() error {
-	cluster := os.Getenv(ClusterEnv)
-	if cluster == "" {
-		if cluster = strings.Split(os.Getenv("HOSTNAME"), ".")[1]; cluster == "" {
+	var cluster string
+	if ClusterName != "" {
+		cluster = ClusterName
+	} else {
+		cluster = os.Getenv(ClusterEnv)
+		if cluster == "" {
 			return NoClusterName
 		}
 	}
+
 	uri := fmt.Sprintf("http://%s%s%s", MeshServerAddr, MeshServerApi, cluster)
 
 	resp, err := http.Get(uri)
