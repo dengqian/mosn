@@ -19,10 +19,12 @@ package configmanager
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 
 	"mosn.io/api"
 	"mosn.io/mosn/pkg/config/v2"
@@ -64,16 +66,11 @@ type ParsedCallback func(data interface{}, endParsing bool) error
 // basic config
 var configParsedCBMaps = make(map[ContentKey][]ParsedCallback)
 
-// extend config parsed listener
-// for user defined configs in extend field
-var configExtendParsedCBMaps = make(map[string][]ParsedCallback)
-
 // Group of ContentKey
 // notes: configcontentkey equals to the key of config file
 const (
-	ParseCallbackKeyCluster        ContentKey = "clusters"
-	ParseCallbackKeyServiceRgtInfo ContentKey = "service_registry"
-	ParseCallbackKeyProcessor      ContentKey = "processor"
+	ParseCallbackKeyCluster   ContentKey = "clusters"
+	ParseCallbackKeyProcessor ContentKey = "processor"
 )
 
 // RegisterConfigParsedListener
@@ -87,32 +84,6 @@ func RegisterConfigParsedListener(key ContentKey, cb ParsedCallback) {
 		log.StartLogger.Infof("[config] %s added to configParsedCBMaps", key)
 		cpc := []ParsedCallback{cb}
 		configParsedCBMaps[key] = cpc
-	}
-}
-
-// RegisterConfigExtendParsedListener used to do callback
-// when the extend config is parsed
-//
-// "extend" : [{
-//        "type" : "dubbo_registry",
-//        "config" : {},
-//    },{
-//        "type" : "sofa_registry",
-//        "config" : {},
-//    },{
-//        "type" :  "msg_broker",
-//        "config" : {}
-//    },{
-//        "type" :  "oh_very",
-//        "config" : "here can be a string"
-//  }]
-//
-func RegisterConfigExtendParsedListener(key string, cb ParsedCallback) {
-	if cbs, ok := configExtendParsedCBMaps[key]; ok {
-		configExtendParsedCBMaps[key] = append(cbs, cb)
-	} else {
-		log.StartLogger.Infof("[config] %s added to configParsedCBMaps", key)
-		configExtendParsedCBMaps[key] = []ParsedCallback{cb}
 	}
 }
 
@@ -222,6 +193,7 @@ func ParseListenerConfig(lc *v2.Listener, inheritListeners []net.Listener, inher
 	if lc.Network == "" {
 		lc.Network = "tcp"
 	}
+	lc.Network = strings.ToLower(lc.Network)
 	// Listener Config maybe not generated from json string
 	if lc.Addr == nil {
 		var addr net.Addr
@@ -229,8 +201,12 @@ func ParseListenerConfig(lc *v2.Listener, inheritListeners []net.Listener, inher
 		switch lc.Network {
 		case "udp":
 			addr, err = net.ResolveUDPAddr("udp", lc.AddrConfig)
-		default: // default tcp
+		case "unix":
+			addr, err = net.ResolveUnixAddr("unix", lc.AddrConfig)
+		case "tcp":
 			addr, err = net.ResolveTCPAddr("tcp", lc.AddrConfig)
+		default:
+			err = fmt.Errorf("unknown listen type: %s , only support tcp,udp,unix", lc.Network)
 		}
 		if err != nil {
 			log.StartLogger.Fatalf("[config] [parse listener] Address not valid: %v", lc.AddrConfig)
@@ -238,7 +214,7 @@ func ParseListenerConfig(lc *v2.Listener, inheritListeners []net.Listener, inher
 		lc.Addr = addr
 	}
 
-	var old *net.TCPListener
+	var old net.Listener
 	var old_pc *net.PacketConn
 	addr := lc.Addr
 	// try inherit legacy listener or packet connection
@@ -262,19 +238,42 @@ func ParseListenerConfig(lc *v2.Listener, inheritListeners []net.Listener, inher
 			if (ip.IsUnspecified() && ilAddr.IP.IsUnspecified()) ||
 				(ip.IsLoopback() && ilAddr.IP.IsLoopback()) ||
 				ip.Equal(ilAddr.IP) {
-				log.StartLogger.Infof("[config] [parse listener] inherit packetConn addr: %s", lc.AddrConfig)
+				log.StartLogger.Infof("[config] [parse listener] [udp] inherit packetConn addr: %s", lc.AddrConfig)
 				old_pc = &il
 				inheritPacketConn[i] = nil
 				break
 			}
 		}
 
-	default: // default tcp
+	case "unix":
 		for i, il := range inheritListeners {
 			if il == nil {
 				continue
 			}
-			tl := il.(*net.TCPListener)
+
+			if _, ok := il.(*net.UnixListener); !ok {
+				continue
+			}
+			unixls := il.(*net.UnixListener)
+
+			path := unixls.Addr().String()
+			if addr.String() == path {
+				log.StartLogger.Infof("[config] [parse listener] [unix] inherit listener addr: %s", lc.AddrConfig)
+				old = unixls
+				inheritListeners[i] = nil
+			}
+		}
+	case "tcp":
+		// default tcp
+		for i, il := range inheritListeners {
+			if il == nil {
+				continue
+			}
+			var tl *net.TCPListener
+			var ok bool
+			if tl, ok = il.(*net.TCPListener); !ok {
+				continue
+			}
 			ilAddr, err := net.ResolveTCPAddr("tcp", tl.Addr().String())
 			if err != nil {
 				log.StartLogger.Fatalf("[config] [parse listener] inheritListener not valid: %s", tl.Addr().String())
@@ -288,7 +287,7 @@ func ParseListenerConfig(lc *v2.Listener, inheritListeners []net.Listener, inher
 			if (ip.IsUnspecified() && ilAddr.IP.IsUnspecified()) ||
 				(ip.IsLoopback() && ilAddr.IP.IsLoopback()) ||
 				ip.Equal(ilAddr.IP) {
-				log.StartLogger.Infof("[config] [parse listener] inherit listener addr: %s", lc.AddrConfig)
+				log.StartLogger.Infof("[config] [parse listener] [tcp] inherit listener addr: %s", lc.AddrConfig)
 				old = tl
 				inheritListeners[i] = nil
 				break
@@ -316,29 +315,6 @@ func ParseRouterConfiguration(c *v2.FilterChain) (*v2.RouterConfiguration, error
 	}
 	return routerConfiguration, nil
 
-}
-
-// extensible service registry
-// for various service registries,
-//  eg: dubbo_registry, sofa_registry, msg_broker or any other user defined ...
-func ParseConfigExtend(itemList []v2.ExtendItem) {
-	// trigger all extend callbacks
-	for _, extConfig := range itemList {
-		if cbs, ok := configExtendParsedCBMaps[extConfig.Type]; ok {
-			for _, cb := range cbs {
-				cb(extConfig.Config, true)
-			}
-		}
-	}
-}
-
-func ParseServiceRegistry(src v2.ServiceRegistryInfo) {
-	//trigger all callbacks
-	if cbs, ok := configParsedCBMaps[ParseCallbackKeyServiceRgtInfo]; ok {
-		for _, cb := range cbs {
-			cb(src, true)
-		}
-	}
 }
 
 // ParseServerConfig
