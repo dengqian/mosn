@@ -70,19 +70,9 @@ func Test_BroadCastFilter(t *testing.T) {
 	bc.SetReceiveFilterHandler(receiveHandler)
 	bc.SetSenderFilterHandler(sendHandler)
 
-	// reqHeaders := newHeaderMap(map[string]string{
-	// 	protocol.MosnHeaderPathKey: "/br",
-	// 	protocol.MosnHeaderHostKey: "br",
-	// })
-
 	reqHeaders := mosnhttp.RequestHeader{&fasthttp.RequestHeader{}, nil}
 	reqHeaders.Add("test-multiple", "value-one")
 	reqHeaders.Add("test-multiple", "value-two")
-
-	// reqHeaders := mosnhttp.RequestHeader(map[string]string{
-	// 	protocol.MosnHeaderPathKey: "/br",
-	// 	protocol.MosnHeaderHostKey: "br",
-	// })
 
 	ctx := mosnctx.WithValue(context.Background(), types.ContextKeyDownStreamHeaders, reqHeaders)
 	ctx = mosnctx.WithValue(ctx, types.ContextKeyConfigUpStreamProtocol, "Http1")
