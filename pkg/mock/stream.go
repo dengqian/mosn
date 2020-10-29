@@ -736,6 +736,8 @@ func NewMockConnectionPool(ctrl *gomock.Controller) *MockConnectionPool {
 	return mock
 }
 
+func (m *MockConnectionPool) UpdateHost(host types.Host) {}
+
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockConnectionPool) EXPECT() *MockConnectionPoolMockRecorder {
 	return m.recorder

@@ -98,6 +98,7 @@ const (
 	DSL            = "dsl"
 	Mirror         = "mirror"
 	DubboStream    = "dubbo_stream"
+	BroadCast      = "broadcast"
 )
 
 // HealthCheckFilter

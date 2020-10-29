@@ -84,6 +84,10 @@ func (p *connpool) Host() types.Host {
 	return nil
 }
 
+func (p *connpool) UpdateHost(host types.Host) {
+	p.host.Store(host)
+}
+
 // keepAliveListener is a types.ConnectionEventListener
 type keepAliveListener struct {
 	keepAlive types.KeepAlive

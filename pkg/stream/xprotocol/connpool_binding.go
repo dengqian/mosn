@@ -47,6 +47,10 @@ func NewPoolBinding(p *connpool) types.ConnectionPool {
 	}
 }
 
+func (p *poolBinding) UpdateHost(host types.Host) {
+	p.connpool.UpdateHost(host)
+}
+
 // CheckAndInit init the connection pool
 func (p *poolBinding) CheckAndInit(ctx context.Context) bool {
 	return true
