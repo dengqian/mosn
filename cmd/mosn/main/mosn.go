@@ -25,7 +25,6 @@ import (
 
 	"github.com/urfave/cli"
 	_ "mosn.io/mosn/pkg/admin/debug"
-	_ "mosn.io/mosn/pkg/buffer"
 	_ "mosn.io/mosn/pkg/filter/listener/originaldst"
 	_ "mosn.io/mosn/pkg/filter/network/connectionmanager"
 	_ "mosn.io/mosn/pkg/filter/network/proxy"
@@ -36,9 +35,11 @@ import (
 	_ "mosn.io/mosn/pkg/filter/stream/faulttolerance"
 	_ "mosn.io/mosn/pkg/filter/stream/flowcontrol"
 	_ "mosn.io/mosn/pkg/filter/stream/gzip"
+	_ "mosn.io/mosn/pkg/filter/stream/jwtauthn"
 	_ "mosn.io/mosn/pkg/filter/stream/mirror"
 	_ "mosn.io/mosn/pkg/filter/stream/mixer"
 	_ "mosn.io/mosn/pkg/filter/stream/payloadlimit"
+	_ "mosn.io/mosn/pkg/filter/stream/proxywasm"
 	_ "mosn.io/mosn/pkg/filter/stream/stats"
 	_ "mosn.io/mosn/pkg/filter/stream/transcoder/http2bolt"
 	_ "mosn.io/mosn/pkg/metrics/sink"
@@ -63,7 +64,10 @@ import (
 	_ "mosn.io/mosn/pkg/trace/sofa/xprotocol/bolt"
 	_ "mosn.io/mosn/pkg/upstream/healthcheck"
 	_ "mosn.io/mosn/pkg/upstream/servicediscovery/dubbod"
+	_ "mosn.io/mosn/pkg/wasm/abi/proxywasm010"
+	_ "mosn.io/mosn/pkg/wasm/runtime/wasmer"
 	_ "mosn.io/mosn/pkg/xds"
+	_ "mosn.io/pkg/buffer"
 )
 
 // Version mosn version
@@ -81,7 +85,7 @@ func newMosnApp(startCmd *cli.Command) *cli.App {
 	app.Name = "mosn"
 	app.Version = Version
 	app.Compiled = time.Now()
-	app.Copyright = "(c) " + strconv.Itoa(time.Now().Year()) + " Ant Financial"
+	app.Copyright = "(c) " + strconv.Itoa(time.Now().Year()) + " Ant Group"
 	app.Usage = "MOSN is modular observable smart netstub."
 	app.Flags = cmdStart.Flags
 
